@@ -11,12 +11,15 @@ Este script realiza:
 3. La construcción de un modelo de Regresión Logística con validación cruzada para predecir si una vivienda es cara.
 4. El análisis del modelo, evaluando la multicolinealidad mediante la matriz de correlación y mostrando los coeficientes del modelo.
 5. La evaluación del modelo en el conjunto de prueba mediante matriz de confusión y reporte de clasificación.
+6. Explique si hay sobreajuste (overfitting) o no (recuerde usar para esto los errores del conjunto de prueba
+y de entrenamiento). Muestre las curvas de aprendizaje usando los errores de los conjuntos de
+entrenamiento y prueba
 """
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.model_selection import learning_curve, train_test_split, cross_val_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
 
@@ -118,6 +121,30 @@ def main():
     print(classification_report(y_test, y_pred))
     
     print("Exactitud (accuracy) en el conjunto de prueba:", accuracy_score(y_test, y_pred))
+
+    # ------------------------------
+    # Inciso 6: Curva de aprendizaje
+    # ------------------------------
+    plt.figure(figsize=(10, 6))
+    train_sizes, train_scores, test_scores = learning_curve(
+        modelo, X_train, y_train, cv=5, train_sizes=np.linspace(0.1, 1.0, 10), scoring='accuracy')
+    
+    train_mean = np.mean(train_scores, axis=1)
+    train_std = np.std(train_scores, axis=1)
+    test_mean = np.mean(test_scores, axis=1)
+    test_std = np.std(test_scores, axis=1)
+    
+    plt.fill_between(train_sizes, train_mean - train_std, train_mean + train_std, alpha=0.1, color="r")
+    plt.fill_between(train_sizes, test_mean - test_std, test_mean + test_std, alpha=0.1, color="g")
+    plt.plot(train_sizes, train_mean, 'o-', color="r", label="Entrenamiento")
+    plt.plot(train_sizes, test_mean, 'o-', color="g", label="Validación cruzada")
+    
+    plt.title("Curvas aprendizaje")
+    plt.xlabel("Tamano conjunto entrenamiento")
+    plt.ylabel("Exactitud")
+    plt.legend(loc="best")
+    plt.grid()
+    plt.show()
 
 if __name__ == "__main__":
     main()
