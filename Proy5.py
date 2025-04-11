@@ -1,16 +1,5 @@
-# -*- coding: utf-8 -*-
 """
-Proyecto 2. Entrega 5: Modelos de Regresión Logística (Incisos 1 a 5 – Sin statsmodels)
-
-Este script realiza:
-1. La generación de una variable categórica basada en 'SalePrice' y la creación de tres variables dicotómicas:
-   - EsCara: indica si la vivienda es cara (1) o no (0).
-   - EsMedia: indica si la vivienda es de precio medio (1) o no (0).
-   - EsEconomica: indica si la vivienda es económica (1) o no (0).
-2. La división reproducible del dataset en conjuntos de entrenamiento y prueba.
-3. La construcción de un modelo de Regresión Logística con validación cruzada para predecir si una vivienda es cara.
-4. El análisis del modelo, evaluando la multicolinealidad mediante la matriz de correlación y mostrando los coeficientes del modelo.
-5. La evaluación del modelo en el conjunto de prueba mediante matriz de confusión y reporte de clasificación.
+Proyecto 2. Entrega 5: Modelos de Regresión Logística
 """
 
 import numpy as np
