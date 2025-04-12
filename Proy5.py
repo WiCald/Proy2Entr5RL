@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Proyecto 2. Entrega 5: Modelos de Regresión Logística (Incisos 1 a 5 – Sin statsmodels)
 
@@ -13,7 +12,7 @@ Este script realiza:
 5. La evaluación del modelo en el conjunto de prueba mediante matriz de confusión y reporte de clasificación.
 6. Explique si hay sobreajuste (overfitting) o no (recuerde usar para esto los errores del conjunto de prueba
 y de entrenamiento). Muestre las curvas de aprendizaje usando los errores de los conjuntos de
-entrenamiento y prueba
+entrenamiento y prueba.
 """
 
 import numpy as np
@@ -86,9 +85,8 @@ def main():
     modelo.fit(X_train, y_train)
 
     # ---------------------
-    # Inciso 4: Análisis del Modelo (Sin statsmodels)
+    # Inciso 4: Análisis del Modelo
     # ---------------------
-    # 4.1: Análisis de multicolinealidad mediante la matriz de correlación
     corr_matrix = X_train.corr()
     plt.figure(figsize=(8, 6))
     plt.imshow(corr_matrix, cmap='coolwarm', interpolation='none')
@@ -99,15 +97,12 @@ def main():
     plt.tight_layout()
     plt.show()
 
-    # 4.2: Mostrar los coeficientes del modelo para evaluar la influencia de cada predictor
     coef_df = pd.DataFrame({
         'Variable': features,
         'Coeficiente': modelo.coef_[0]
     })
     print("\nCoeficientes del modelo:")
     print(coef_df)
-    # Nota: Con sklearn no se obtienen valores p. Se recomienda interpretar los coeficientes (y sus signos)
-    # y, si se requiere una significancia estadística, se podrían aplicar métodos alternativos (por ejemplo, bootstrapping).
 
     # ---------------------
     # Inciso 5: Evaluación del Modelo en el Conjunto de Prueba
