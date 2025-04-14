@@ -288,22 +288,22 @@ def main():
                               target_names=['Económica', 'Media', 'Cara']))
 
     # ------------------------------
-    # Inciso 10: Comparación de eficiencia de modelos
+    # Inciso 11: Comparación de eficiencia de modelos
     # ------------------------------
     @profile
     def evaluate_model(model, X_train, y_train, X_test):
-        start = time.time()
+        start_e = time.time()
         model.fit(X_train, y_train)
-        train_time = time.time() - start
+        train_time = max(time.time() - start_e, 0.000001)
         
-        start = time.time()
+        start_p = time.time()
         y_pred = model.predict(X_test)
-        pred_time = time.time() - start
+        pred_time = max(time.time() - start_p, 0.000001)
         
         return {
             'Tiempo Entrenamiento': train_time,
             'Tiempo Predicción': pred_time,
-            'Exactitud': accuracy_score(y_test if 'y_test' in locals() else y_test_m, y_pred)
+            'Exactitud': accuracy_score(y_test, y_pred)
         }
     
     #Ev y comparacion
