@@ -15,13 +15,30 @@ y de entrenamiento). Muestre las curvas de aprendizaje usando los errores de los
 entrenamiento y prueba.
 """
 
+import time
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.model_selection import learning_curve, train_test_split, cross_val_score
+from sklearn.calibration import LabelEncoder
+from sklearn.model_selection import learning_curve, train_test_split, cross_val_score, GridSearchCV
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score, log_loss
+from sklearn.multiclass import OneVsRestClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+import cProfile
+import io
+import pstats
+from functools import wraps
 
+def aic_bic(model, X, y):
+    n = X.shape[0]
+    probas = model.predict_proba(X)
+    ll = -log_loss(y, probas, normalize=False)
+    k = X.shape[1] + 1  
+    aic = 2 * k - 2 * ll
+    bic = np.log(n) * k - 2 * ll
+    return aic, bic
 def main():
     # ---------------------
     # Inciso 1: Crear Variables Dicotómicas a partir de SalePrice
@@ -140,6 +157,178 @@ def main():
     plt.legend(loc="best")
     plt.grid()
     plt.show()
+
+    # ------------------------------
+    # Inciso 7: Tuneo curva de aprendizaje
+    # ------------------------------
+    pipeline = Pipeline([
+        ('scaler', StandardScaler()),
+        ('model', LogisticRegression(max_iter=1000))
+    ])
+    #busca parametro
+    param_grid = {
+    'model__penalty': ['l1', 'l2'],
+    'model__C': [0.001, 0.01, 0.1, 1, 10, 100],
+    'model__solver': ['liblinear', 'saga']
+    }
+    grid_search = GridSearchCV(pipeline, param_grid, cv=5, scoring='accuracy', n_jobs=-1, verbose=1)
+    grid_search.fit(X_train, y_train)
+    print("\nMejores parámetros encontrados:")
+    print(grid_search.best_params_)
+    best_model = grid_search.best_estimator_
+    y_pred = best_model.predict(X_test)
+    print("Exactitud:", accuracy_score(y_test, y_pred))
+    # ------------------------------
+    # Inciso 8: Matriz de confusion y rendimiento
+    # ------------------------------
+    y_pred = best_model.predict(X_test)
+    cm = confusion_matrix(y_test, y_pred)
+    print("\nMatriz de Confusion (Tuneo):")
+    print(cm)
+
+    print("\n**ANÁLISIS DE RENDIMIENTO**")
+    # Análisis detallado de errores
+    tn, fp, fn, tp = cm.ravel()
+    print("\nDetalle de errores:")
+    print(f"- Falsos Positivos (FP): {fp} casos - Viviendas normales clasificadas como caras")
+    print(f"- Falsos Negativos (FN): {fn} casos - Viviendas caras clasificadas como normales")
+    print(f"\nTasa de error FP: {fp/(fp+tn):.2%}")
+    print(f"Tasa de error FN: {fn/(fn+tp):.2%}")
+
+    # Análisis de rendimiento con cProfile
+    tn, fp, fn, tp = cm.ravel()
+    print("\n**DETALLE DE ERRORES**")
+    print(f"Falsos Positivos (FP): {fp} casos - Viviendas normales clasificadas como caras")
+    print(f"Falsos Negativos (FN): {fn} casos - Viviendas caras clasificadas como normales")
+    print(f"\nTasa de error FP: {fp/(fp+tn):.2%}")
+    print(f"Tasa de error FN: {fn/(fn+tp):.2%}")
+
+    # Función para análisis de rendimiento
+    print("\n**ANÁLISIS DE RENDIMIENTO**")
+    print("=== Resultados del perfilado ===")
+    def profile(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            pr = cProfile.Profile()
+            pr.enable()
+            start_time = time.time()
+            
+            result = func(*args, **kwargs)
+            
+            end_time = time.time()
+            pr.disable()
+            
+            print(f"\nTiempo de ejecución: {end_time - start_time:.4f} segundos")
+            
+            s = io.StringIO()
+            ps = pstats.Stats(pr, stream=s).sort_stats('cumtime')
+            ps.print_stats(10)
+            print(s.getvalue())
+            
+            return result
+        return wrapper
+
+    # Función a analizar
+    @profile
+    def train_and_predict():
+        model = Pipeline([
+            ('scaler', StandardScaler()),
+            ('model', LogisticRegression(penalty='l2', C=1, solver='liblinear', max_iter=1000))
+        ])
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        return accuracy_score(y_test, y_pred)
+    train_and_predict()
+
+    # ------------------------------
+    # Inciso 9: Mejor modelo
+    # ------------------------------
+    aic_bin, bic_bin = aic_bic(best_model.named_steps['model'], X_test, y_test)
+    print("\nMetricas estadisticas:")
+    print(f"AIC: {aic_bin:.2f} | BIC: {bic_bin:.2f}")
+    print("(Valores mas bajos indican mejor modelo)")
+    #matriz
+    y_pred_bin = best_model.predict(X_test)
+    cm_bin = confusion_matrix(y_test, y_pred_bin)
+    tn, fp, fn, tp = cm_bin.ravel()
+    
+    print("\nAnálisis de errores:")
+    print(f"FP (Sobrestimación): {fp} casos ({fp/(fp+tn):.2%})")
+    print(f"FN (Subestimación): {fn} casos ({fn/(fn+tp):.2%})")
+
+    # ------------------------------
+    # Inciso 10: Regresion para variable de precios
+    # ------------------------------
+    X_multi = df[features]
+    y_multi = LabelEncoder().fit_transform(df['Categoria'])  # 0:barata, 1:media, 2:cara
+    
+    X_train_m, X_test_m, y_train_m, y_test_m = train_test_split(
+        X_multi, y_multi, test_size=0.3, random_state=42)
+    
+    # Pipeline y parametros
+    multi_pipe = Pipeline([
+        ('scaler', StandardScaler()),
+        ('model', OneVsRestClassifier(LogisticRegression(max_iter=1000)))
+    ])
+    param_grid = {
+        'model__estimator__C': [0.1, 1, 10],
+        'model__estimator__penalty': ['l2'],
+        'model__estimator__solver': ['liblinear', 'saga']
+    }
+    print("\nTUNEADO MULTICASE")
+    grid_multi = GridSearchCV(multi_pipe, param_grid, cv=5, scoring='accuracy', n_jobs=-1)
+    grid_multi.fit(X_train_m, y_train_m)
+    
+    best_multi = grid_multi.best_estimator_
+    print("\nMejores parametros:", grid_multi.best_params_)
+
+    y_pred_multi = best_multi.predict(X_test_m)
+    print("\nReporte clasificacion:")
+    print(classification_report(y_test_m, y_pred_multi, 
+                              target_names=['Económica', 'Media', 'Cara']))
+
+    # ------------------------------
+    # Inciso 10: Comparación de eficiencia de modelos
+    # ------------------------------
+    @profile
+    def evaluate_model(model, X_train, y_train, X_test):
+        start = time.time()
+        model.fit(X_train, y_train)
+        train_time = time.time() - start
+        
+        start = time.time()
+        y_pred = model.predict(X_test)
+        pred_time = time.time() - start
+        
+        return {
+            'Tiempo Entrenamiento': train_time,
+            'Tiempo Predicción': pred_time,
+            'Exactitud': accuracy_score(y_test if 'y_test' in locals() else y_test_m, y_pred)
+        }
+    
+    #Ev y comparacion
+    #binario
+    res_bin = evaluate_model(best_model, X_train, y_train, X_test)
+    #multicase
+    res_multi = evaluate_model(best_multi, X_train_m, y_train_m, X_test_m)
+    
+    comparison = pd.DataFrame({
+        'Binario': res_bin,
+        'Multiclase': res_multi
+    }).T
+    print("\nTabla comparativa:")
+    print(comparison)
+    
+    print("\n*** CONCLUSIONES ***")
+    print("Rendimiento computacional:")
+    print("  - Tiempo (mas lento):")
+    print(f"   Entrenamiento: {res_multi['Tiempo Entrenamiento']/res_bin['Tiempo Entrenamiento']:.1f}x")
+    print(f"   Prediccion:    {res_multi['Tiempo Predicción']/res_bin['Tiempo Predicción']:.1f}x")
+    
+    print("\nPrecisión:")
+    print(f"   Binario: {res_bin['Exactitud']:.2%} de exactitud")
+    print(f"   Multiclase: {res_multi['Exactitud']:.2%} de exactitud")
+
 
 if __name__ == "__main__":
     main()
