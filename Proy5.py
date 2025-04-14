@@ -288,7 +288,7 @@ def main():
                               target_names=['Económica', 'Media', 'Cara']))
 
     # ------------------------------
-    # Inciso 10: Comparación de eficiencia de modelos
+    # Inciso 11: Comparación de eficiencia de modelos
     # ------------------------------
     @profile
     def evaluate_model(model, X_train, y_train, X_test):
